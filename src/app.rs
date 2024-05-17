@@ -1,20 +1,33 @@
 use crate::messages::Message;
 use crate::types::type_definitions::Type;
+use crate::types::type_definitions::{CheckType, Check, Gratuity, Item, RevenueCategory, ServiceCharge, TaxGroup, Tax, };
 use crate::view::views::View;
 use crate::theme;
 use crate::components::theme::themes::Themes;
 use crate::widget::{Column, Container, Button, Element, Row, Text };
+use crate::widget::table::lib::table;
 
 use iced::executor;
 use iced::widget::{ checkbox, row, scrollable, text_input,};
-use iced::{Application, Command, Length,};
+use iced::{Application, Command, Length, };
 use iced::alignment::{Alignment, Horizontal};
+use iced_widget::runtime::system;
 
 pub struct ReceiptCalculator {
     pub view: View,
     pub theme: Themes,
     pub types: Vec<Type>,
 
+    // System Data acting as the "in memory" database
+    pub system_items: Vec<Item>,
+    pub system_check_types: Vec<CheckType>,
+    pub system_checks: Vec<Check>,
+    pub system_gratuities: Vec<Gratuity>,
+    pub system_revenue_categories: Vec<RevenueCategory>,
+    pub system_service_charges: Vec<ServiceCharge>,
+    pub system_tax_groups: Vec<TaxGroup>,
+    pub system_taxes: Vec<Tax>,
+    
     check_type_id: String,
     check_type_name: String,
     check_type_description: String,
@@ -29,6 +42,11 @@ pub struct ReceiptCalculator {
     gratuity_rate: String,
     gratuity_revenue_categories: String,
     gratuity_taxed: bool,
+
+    item_id: String,
+    item_name: String,
+    item_price: String,
+    item_tax_group: String,
 
 
 }
@@ -55,25 +73,41 @@ impl Application for ReceiptCalculator {
                     Type::TaxGroup,
                     Type::Tax,
                 ],
+                system_items: Vec::new(),
+                system_check_types: Vec::new(),
+                system_checks: Vec::new(),
+                system_gratuities: Vec::new(),
+                system_revenue_categories: Vec::new(),
+                system_service_charges: Vec::new(),
+                system_tax_groups: Vec::new(),
+                system_taxes: Vec::new(),
+
                 check_type_id: String::new(),
                 check_type_name: String::new(),
                 check_type_description: String::new(),
                 default_check_type: true,
                 active_check_type: true,
+
                 check_id: String::new(),
                 check_name: String::new(),
+
                 gratuity_id: String::new(),
                 gratuity_name: String::new(),
                 gratuity_rate: String::new(),
                 gratuity_revenue_categories: String::new(),
                 gratuity_taxed: true,
+
+                item_id: String::new(),
+                item_name: String::new(),
+                item_price: String::new(),
+                item_tax_group: String::new(),
             },
             Command::none(),
         )
     }
 
     fn title(&self) -> String {
-        String::from("Receipt Breakdown Calculator")
+        String::from("Piece of Shit - POS")
     }
 
     fn theme(&self) -> Self::Theme {
@@ -130,6 +164,48 @@ impl Application for ReceiptCalculator {
             Message::GratuityTaxedChanged(gratuity_taxed) => {
                 self.gratuity_taxed = !self.gratuity_taxed;
             }
+            Message::ItemIdChanged(value) => {
+                self.item_id = value;
+            }
+            Message::ItemNameChanged(value) => {
+                self.item_name = value;
+            }
+            Message::ItemPriceChanged(value) => {
+                self.item_price = value;
+            }
+            Message::ItemTaxGroupChanged(value) => {
+                self.item_tax_group = value;
+            }
+            Message::AddSystemItem(item) => {
+                let new_item = item;
+
+                self.system_items.push(new_item);
+
+                //clear text inputs
+                self.item_id = String::new();
+                self.item_name = String::new();
+                self.item_price = String::new();
+                self.item_tax_group = String::new();
+            }
+            Message::EditSystemItem(item) => {
+                // Edit the item -> How do I edit the active item??
+                //self.item_id = item.id.to_string();
+                //self.item_name = item.name.clone();
+                //self.item_price = item.price.to_string();
+                //self.item_tax_group = item.tax_group.clone();
+            }
+            Message::DeleteSystemItem(item) => {
+                if self.system_items.len() == 0 {
+                    return Command::none();
+                }
+                if self.system_items.len() == 1 {
+                    self.system_items.clear();
+                }
+                else {
+                    self.system_items.remove(item);
+                }
+            }
+
 //            _ => (),
         }
         Command::none()
@@ -298,13 +374,104 @@ impl Application for ReceiptCalculator {
                     .style(theme::Container::Black)                
             }
             View::ItemView => {
-                let item_view_column = Container::new(Text::new("Item View"))
+                let add_item_button = Button::new(Text::new("Add Item"));
+
+                let add_item_view_column = Column::new()
+                    .push(
+                        Row::new()
+                            .push(Text::new("Item Id: "))
+                            .push(
+                                text_input("Item Id", &self.item_id)
+                                    .on_input(Message::ItemIdChanged)
+                                    .padding(5)
+                            )
+                            .push(Text::new("Item Name: "))
+                            .push(
+                                text_input("Item Name", &self.item_name)
+                                    .on_input(Message::ItemNameChanged)
+                                    .padding(5)
+                            )
+                            .push(Text::new("Item Price: "))
+                            .push(
+                                text_input("Item Price", &self.item_price)
+                                    .on_input(Message::ItemPriceChanged)
+                                    .padding(5)
+                            )
+                            .push(Text::new("Tax Group: "))
+                            .push(
+                                text_input("Tax Group", &self.item_tax_group)
+                                    .on_input(Message::ItemTaxGroupChanged)
+                                    .padding(5)
+                            )
+                            .push(
+                                add_item_button
+                                    .on_press(Message::AddSystemItem(Item::new(self.item_id.parse::<usize>().unwrap_or(1), self.item_name.clone(), self.item_price.parse::<f64>().unwrap_or(0.0), self.item_tax_group.clone())))
+                                    .style(theme::Button::Primary)
+                                    .padding(5)
+                            )                   
+                    )
+                    .padding(5).spacing(12);
+                
+                let system_item_list = scrollable(
+                    Column::with_children(
+                        self.system_items
+                            .iter()
+                            .map(|item| {
+                                Row::new()
+                                    .push(Text::new(item.id.to_string()))
+                                    .push(Text::new(item.name.clone()))
+                                    .push(Text::new(item.price.to_string()))
+                                    .push(Text::new(item.tax_group.clone()))
+                                    .push(Button::new(Text::new("Edit"))
+                                        .on_press(Message::EditSystemItem(item.id.clone()))
+                                        .style(theme::Button::MediaStart)
+                                        .padding(5))
+                                    .push(Button::new(Text::new("Delete"))
+                                        .on_press(Message::DeleteSystemItem(item.id.clone()))
+                                        .style(theme::Button::MediaStart)
+                                        .padding(5)
+                                    )
+                                    .spacing(10)
+                                    .width(Length::Fill)                                
+                                    .into()
+                            })
+                            .collect::<Vec<_>>(),
+                    )
                     .width(Length::Fill)
                     .height(Length::Fill)
-                    .align_x(Horizontal::Right)
-                    .style(theme::Container::Black);
+                    .padding(5)
+                );
 
-                item_view_column
+                let system_item_list_header = Column::new()
+                    .push(
+                        Row::new()
+                            .push(Text::new("Item Id"))
+                            .push(Text::new("Item Name"))
+                            .push(Text::new("Item Price"))
+                            .push(Text::new("Tax Group"))
+                            .push(Text::new("Edit"))
+                            .push(Text::new("Delete"))
+                            .width(Length::Fill)
+                            .spacing(10)
+                            .padding(5)
+                    );
+
+                let item_view_section = Column::with_children(
+                    vec![
+                        add_item_view_column.into(),
+                        system_item_list_header.into(),
+                        system_item_list.into(),
+                    ]
+                )
+                .spacing(10);
+
+                Container::new(item_view_section)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .align_x(Horizontal::Center)
+                    //.style(theme::Container::Black)
+
+                
             }
             View::RevenueCategoryView => {
                 let revenue_category_view_column = Container::new(Text::new("Revenue Category View"))

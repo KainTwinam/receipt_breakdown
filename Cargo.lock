@@ -2082,6 +2082,9 @@ name = "receipt_breakdown"
 version = "0.1.0"
 dependencies = [
  "iced",
+ "iced_core",
+ "iced_style",
+ "iced_widget",
  "once_cell",
  "serde",
  "serde_json",

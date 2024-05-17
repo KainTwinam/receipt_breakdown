@@ -10,7 +10,7 @@ pub enum Type {
     Tax,
 }
 
-#[derive(Debug, PartialEq,)]
+#[derive(Debug, PartialEq, Clone,)]
 pub struct CheckType {
     id: i32,
     name: String,
@@ -37,7 +37,7 @@ impl CheckType{
     }
 }
 
-#[derive(Debug, PartialEq,)]
+#[derive(Debug, PartialEq, Clone,)]
 pub struct Check {
     id: i32,
     name: String,
@@ -56,7 +56,7 @@ impl Check{
     }
 }
 
-#[derive(Debug, PartialEq,)]
+#[derive(Debug, PartialEq, Clone,)]
 pub struct Gratuity {
     id: i32,
     name: String,
@@ -77,26 +77,26 @@ impl Gratuity{
     }
 }
 
-#[derive(Debug, PartialEq, )]
+#[derive(Debug, PartialEq, Clone,)]
 pub struct Item {
-    id: i32,
-    name: String,
-    cost: f64,
-    tax_group: TaxGroup,
+    pub id: usize,
+    pub name: String,
+    pub price: f64,
+    pub tax_group: String,
 }
 
 impl Item{
-    pub fn new(id: i32, name: String, cost: f64, tax_group: TaxGroup) -> Self {
+    pub fn new(id: usize, name: String, price: f64, tax_group: String) -> Self {
         Item {
             id,
             name,
-            cost,
+            price,
             tax_group,
         }
     }
 }
 
-#[derive(Debug, PartialEq,)]
+#[derive(Debug, PartialEq, Clone,)]
 pub struct RevenueCategory {
     name: String,
 }
@@ -109,8 +109,7 @@ impl RevenueCategory{
     }
 }
 
-
-#[derive(Debug, PartialEq,)]
+#[derive(Debug, PartialEq, Clone,)]
 pub struct ServiceCharge {
     id: i32,
     name: String,
@@ -129,7 +128,7 @@ impl ServiceCharge{
     }
 }
 
-#[derive(Debug, PartialEq, )]
+#[derive(Debug, PartialEq, Clone,)]
 pub struct TaxGroup {
     id: i32,
     name: String,
@@ -146,7 +145,8 @@ impl TaxGroup{
     }
 }
 
-#[derive(Debug, PartialEq,)]
+
+#[derive(Debug, PartialEq, Clone,)]
 pub struct Tax {
     id: i32,
     name: String,
@@ -154,11 +154,12 @@ pub struct Tax {
 }
 
 impl Tax{
-    pub fn new(id: i32, name: String, rate: f64) -> Self {
+    pub fn new(id: i32, name: &str, rate: f64) -> Self {
         Tax {
             id,
-            name,
+            name: String::from(name),
             rate,
         }
     }
 }
+

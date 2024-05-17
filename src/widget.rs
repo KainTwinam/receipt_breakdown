@@ -6,6 +6,11 @@
 
 pub mod animation;
 pub mod helpers;
+pub mod table;
+
+//un-comment to test the table_widget widget.
+//pub mod table_widget;
+//pub mod table_widget_style;
 
 pub type Renderer = iced::Renderer;
 pub type Theme = crate::theme::Theme;

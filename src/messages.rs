@@ -22,12 +22,25 @@ pub enum Message {
     GratuityRevenueCategoriesChanged(String),
     GratuityTaxedChanged(bool),
 
+    // item messages, these are the same as the item_view messages while I migrate to seperating the view system
+    ItemView(ItemViewMessage), // this is the message that will actually update the view in the main app after migration.
+/*     ItemIdChanged(String),
+    ItemNameChanged(String),
+    ItemPriceChanged(String),
+    ItemTaxGroupChanged(String),
+    AddSystemItem(Item), // button to add new items to the system
+    DeleteSystemItem(u64),
+    EditSystemItem(u64), */
+
+}
+
+#[derive(Debug, Clone)]
+pub enum ItemViewMessage {
     ItemIdChanged(String),
     ItemNameChanged(String),
     ItemPriceChanged(String),
     ItemTaxGroupChanged(String),
     AddSystemItem(Item), // button to add new items to the system
-    DeleteSystemItem(usize),
-    EditSystemItem(usize),
-
+    DeleteSystemItem(u64),
+    EditSystemItem(u64),
 }

@@ -6,6 +6,7 @@ use crate::theme;
 use crate::components::theme::themes::Themes;
 use crate::widget::{Column, Container, Button, Element, Row, Text };
 use crate::widget::table::lib::table;
+use crate::view::item_view::ItemView;
 
 use iced::executor;
 use iced::widget::{ checkbox, row, scrollable, text_input,};
@@ -18,8 +19,11 @@ pub struct ReceiptCalculator {
     pub theme: Themes,
     pub types: Vec<Type>,
 
+    // different view states
+    item_view: ItemView,
+
     // System Data acting as the "in memory" database
-    pub system_items: Vec<Item>,
+    //pub system_items: Vec<Item>,
     pub system_check_types: Vec<CheckType>,
     pub system_checks: Vec<Check>,
     pub system_gratuities: Vec<Gratuity>,
@@ -43,10 +47,10 @@ pub struct ReceiptCalculator {
     gratuity_revenue_categories: String,
     gratuity_taxed: bool,
 
-    item_id: String,
-    item_name: String,
-    item_price: String,
-    item_tax_group: String,
+    //item_id: String,
+    //item_name: String,
+    //item_price: String,
+    //item_tax_group: String,
 
 
 }
@@ -73,7 +77,10 @@ impl Application for ReceiptCalculator {
                     Type::TaxGroup,
                     Type::Tax,
                 ],
-                system_items: Vec::new(),
+                // initialize the item_view
+                item_view: ItemView::new(),
+
+                //system_items: Vec::new(),
                 system_check_types: Vec::new(),
                 system_checks: Vec::new(),
                 system_gratuities: Vec::new(),
@@ -97,10 +104,10 @@ impl Application for ReceiptCalculator {
                 gratuity_revenue_categories: String::new(),
                 gratuity_taxed: true,
 
-                item_id: String::new(),
-                item_name: String::new(),
-                item_price: String::new(),
-                item_tax_group: String::new(),
+                //item_id: String::new(),
+                //item_name: String::new(),
+                //item_price: String::new(),
+                //item_tax_group: String::new(),
             },
             Command::none(),
         )
@@ -127,6 +134,9 @@ impl Application for ReceiptCalculator {
                     Type::TaxGroup => self.view = View::TaxGroupView,
                     Type::Tax => self.view = View::TaxView,
                 };
+            }
+            Message::ItemView(item_view_message) => {
+                self.item_view.update(item_view_message);
             }
             Message::CheckTypeIdChanged(value) => {
                 self.check_type_id = value;
@@ -164,7 +174,7 @@ impl Application for ReceiptCalculator {
             Message::GratuityTaxedChanged(gratuity_taxed) => {
                 self.gratuity_taxed = !self.gratuity_taxed;
             }
-            Message::ItemIdChanged(value) => {
+/*             Message::ItemIdChanged(value) => {
                 self.item_id = value;
             }
             Message::ItemNameChanged(value) => {
@@ -202,9 +212,10 @@ impl Application for ReceiptCalculator {
                     self.system_items.clear();
                 }
                 else {
-                    self.system_items.remove(item);
+                    println!("removing item: {:?}", item);
+                    self.system_items.remove(item.try_into().expect("Error removing item"));
                 }
-            }
+            } */
 
 //            _ => (),
         }
@@ -374,6 +385,9 @@ impl Application for ReceiptCalculator {
                     .style(theme::Container::Black)                
             }
             View::ItemView => {
+                self.item_view.view()
+            }
+/*             View::ItemView => {   // view prior to moving logic to another file
                 let add_item_button = Button::new(Text::new("Add Item"));
 
                 let add_item_view_column = Column::new()
@@ -448,7 +462,7 @@ impl Application for ReceiptCalculator {
                             .push(Text::new("Item Id"))
                             .push(Text::new("Item Name"))
                             .push(Text::new("Item Price"))
-                            .push(Text::new("Tax Group"))
+                           .push(Text::new("Tax Group"))
                             .push(Text::new("Edit"))
                             .push(Text::new("Delete"))
                             .width(Length::Fill)
@@ -470,9 +484,7 @@ impl Application for ReceiptCalculator {
                     .height(Length::Fill)
                     .align_x(Horizontal::Center)
                     //.style(theme::Container::Black)
-
-                
-            }
+            } */
             View::RevenueCategoryView => {
                 let revenue_category_view_column = Container::new(Text::new("Revenue Category View"))
                     .width(Length::Fill)

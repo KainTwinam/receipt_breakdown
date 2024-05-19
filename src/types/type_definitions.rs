@@ -1,3 +1,15 @@
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static CHECKTYPE_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+static CHECK_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+static GRATUITY_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+static ITEM_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+static REVENUE_CATEGORY_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+static SERVICE_CHARGE_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+static TAX_GROUP_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+static TAX_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Type {
     CheckType,
@@ -79,14 +91,16 @@ impl Gratuity{
 
 #[derive(Debug, PartialEq, Clone,)]
 pub struct Item {
-    pub id: usize,
+    pub id: u64,
     pub name: String,
     pub price: f64,
     pub tax_group: String,
 }
 
 impl Item{
-    pub fn new(id: usize, name: String, price: f64, tax_group: String) -> Self {
+    pub fn new(id: u64, name: String, price: f64, tax_group: String) -> Self {
+        let id = ITEM_ID_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
+
         Item {
             id,
             name,

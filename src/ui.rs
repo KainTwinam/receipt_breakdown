@@ -32,7 +32,6 @@ pub enum Message {
     DeleteItem(i64),
     SaveItem(i64),
     NewItem,
-    AddItem(Item),
     ToggleEditMode(i64, bool),
 
     //add item form
@@ -75,7 +74,7 @@ impl ItemView {
                     println!("Item: {}", item.name)
                 } */
 
-                   //create sales tax to add to tax group
+                //create sales tax to add to tax group
                 let sales_tax = Tax::new(1, 0.085, "Sales Tax".to_string());
 
                 //add sales tax to a new Vec 'taxes'
@@ -107,21 +106,6 @@ impl ItemView {
                 
                 Task::none()
             }
-            Message::AddItem(item) => {
-                println!("Adding Item {} to item vec!", item.name);
-                state.items.push(item);
-
-                let (window_id, spawn_window) = window::open( window::Settings {
-                    ..Default::default()
-                });
-
-                let title = "Some Title";
-                
-                let add_item_window = Window::new(window_id, title.to_string());
-                add_item_window;
-
-                Task::none()
-            }
             Message::ToggleEditMode(item_id, editing) => {
                 if editing{
                     state.edit_states.insert(item_id, editing);
@@ -151,18 +135,19 @@ impl ItemView {
                 Task::none()
             }
             Message::ItemNameChanged(name) => {
-                println!("Item Name field Changes");
+                println!("Item Name field Changed");
                 state.item_name = name;
 
                 Task::none()
             }
             Message::CategoryChanged(category) => {
+                println!("Item Category field Changed");
                 state.category = category;
 
                 Task::none()
             }
             Message::PriceChanged(price) => {
-                println!("Price Changed.");
+                println!("Price Changed");
                 match price {
                     validator::Message::RawInput(input) => {
                         state.price.value = input;
@@ -191,7 +176,83 @@ impl ItemView {
         }
     }
 
-    pub fn view<'a>(state: &Self) -> Element<'_, Message>{
+    pub fn view<'a>(state: &Self) -> Element<'static, Message>{
+        let validator::Input {
+            value,
+            is_valid,
+            placeholder,
+        } = &state.item_id;
+
+        let validator::Input {
+            value,
+            is_valid,
+            placeholder,
+        } = &state.price;
+
+
+        //create sales tax to add to tax group
+        let sales_tax = Tax::new(1, 0.085, "Sales Tax".to_string());
+
+        //add sales tax to a new Vec 'taxes'
+        let mut taxes = Vec::new();
+        &taxes.push(sales_tax);
+
+        //create new taxgroup with the sales tax
+        let tax_group = TaxGroup::new(1, "Default".to_string(), taxes);
+
+        //create default gratuity
+        let gratuity = Gratuity::new(1, 0.20, "Default Gratuity".to_string(), tax_group.clone(), false);
+
+        //create default service charge
+        let service_charge = ServiceCharge::new(1, 0.05, "Default Service Charge".to_string(), tax_group.clone(), false);
+
+        column![
+            column![
+
+                row![
+                    text("Items").size(25),
+
+                ],
+                
+                row![
+                    column![
+                        validator::view(&state.item_id.value.clone(), &"Item ID").map(Message::ItemIdChanged),
+                        if state.item_id.value.is_empty(){
+                            "".into()
+                        } else if state.item_id.is_valid {
+                            text("Perfect").style(text::primary)
+                        } else {
+                            text("Numbers Only").style(text::danger)
+                        },
+                    ],
+                    //text_input("Item ID", &state.item_id).on_input(Message::ItemIdChanged),
+                    text_input("Item Name", &state.item_name.clone()).on_input(Message::ItemNameChanged),
+                    text_input("Item Category", &state.category.clone()).on_input(Message::CategoryChanged),
+                    column![
+                        validator::view(&state.price.value.clone(), &"Item Price").map(Message::PriceChanged),
+                        if state.price.value.is_empty(){
+                            "".into()
+                        } else if state.price.is_valid {
+                            text("Perfect").style(text::primary)
+                        } else {
+                            text("Numbers Only").style(text::danger)
+                        },
+                    ],
+                    //text_input("Item Price", &state.price).on_input(Message::PriceChanged),
+                    text_input("Item Tax Group", &state.tax_group.clone()).on_input(Message::TaxGroupChanged),
+                    column![checkbox("Overide Tax", state.tax_overide.clone()).on_toggle(Message::TaxOverideChanged).spacing(2)].spacing(10).padding(10),
+                ],
+                row![
+                    button("Add Item").on_press(Message::NewItem)
+                    .width(Length::Shrink),
+                ],
+
+                create_items_table(state.items.clone(), &mut state.edit_states.clone())
+            ]
+        ].into()
+    }
+
+    pub fn add_item_window<'a>(state: &Self) -> Element<'static, Message>{
         let validator::Input {
             value,
             is_valid,
@@ -227,9 +288,10 @@ impl ItemView {
                     text("Items").size(25),
 
                 ],
+                
                 row![
                     column![
-                        validator::view(&state.item_id.value, &"Item ID").map(Message::ItemIdChanged),
+                        validator::view(&state.item_id.value.clone(), &"Item ID").map(Message::ItemIdChanged),
                         if state.item_id.value.is_empty(){
                             "".into()
                         } else if state.item_id.is_valid {
@@ -259,7 +321,6 @@ impl ItemView {
                     button("Add Item").on_press(Message::NewItem)
                     .width(Length::Shrink),
                 ],
-                create_items_table(state.items.clone(), &mut state.edit_states.clone())
             ]
         ].into()
     }

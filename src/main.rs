@@ -7,23 +7,28 @@ use items::Item;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::collections::BTreeMap;
+use std::rc::Rc;
+use std::cell::RefCell;
 use crate::ui::custom_appearances::{pos_table_header, pos_table_row};
 use crate::data::window::{default_size, Error, MIN_SIZE};
 mod window;
 use window::Window;
 mod data;
 
-
+#[derive(Debug)]
 pub struct AppState {
-    item_view: ItemView
+    item_view: ItemView,
+    add_item_view: ItemView,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum WindowType {
     Main,
     ItemList,
     CreateItem
 }
 
+#[derive(Debug, Clone)]
 pub struct WindowState {
     id: window::Id,
     title: String,
@@ -31,28 +36,21 @@ pub struct WindowState {
 }
 
 struct RC {
-    current_view: Page,
-    main_window: Window,
-    windows: BTreeMap<window::Id, Window>,
-
+    main_window_id: window::Id,
+    windows: BTreeMap<window::Id, WindowState>,
+    shared_state: Rc<RefCell<AppState>>,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     UI(ui::Message),
-    SpawnWindow(String),
 
     //testing multi Window application
-    OpenWindow,
-    WindowOpened(window::Id),
+    MainWindowOpened(window::Id),
+    OpenWindow(WindowType, String),
+    WindowOpened(WindowState),
     WindowClosed(window::Id),
     TitleChanged(window::Id, String),
-}
-
-
-pub enum Page {
-    Home(ui::ItemView),
-    CreateItem,
 }
 
 
@@ -353,26 +351,35 @@ impl Receipt {
 
 impl RC {
     fn new() -> (Self, Task<Message>) {
-        let item_view_state = ItemView::new();
-
-        let (_id, open) = window::open(window::Settings::default());
         let (main_window_id, open_main_window) = window::open(window::Settings {
             size: window::default_size(),
             position: window::Position::Default,
             min_size: Some(window::MIN_SIZE),
-            exit_on_close_request: false,
+            exit_on_close_request: true,
             ..window::settings()
         });
 
-        let main_window = Window::new(main_window_id, "Main Window".to_string());
+        let main_window = WindowState {
+            id: main_window_id,
+            title: "Receipt Calculator".to_string(),
+            window_type: WindowType::Main,
+        };
+
+        let shared_state = Rc::new(RefCell::new(AppState{
+            item_view: ItemView::new(),
+            add_item_view: ItemView::new(),
+        }));
+
+        let mut windows = BTreeMap::new();
+        windows.insert(main_window_id, main_window);
 
         (
             Self {
-                windows: BTreeMap::new(),
-                main_window: main_window,
-                current_view: Page::Home(item_view_state),
+                windows,
+                main_window_id,
+                shared_state,
             },
-            open.map(Message::WindowOpened),
+            open_main_window.map(Message::MainWindowOpened),
         )
     }
 
@@ -380,36 +387,18 @@ impl RC {
     fn update(state: &mut Self, message: Message) -> Task<Message> {
         match message {
             Message::UI(ui_message) => {
-                match &mut state.current_view {
-                    Page::Home(item_view_state) => {
-                        ItemView::update(item_view_state, ui_message).map(Message::UI)
-                    }
-                    Page::CreateItem => {
-                        Task::none()
-                    }
-                }
+                let mut app_state = state.shared_state.borrow_mut();
+                ItemView::update(&mut app_state.item_view, ui_message).map(Message::UI)
             }
-            Message::SpawnWindow(window_title) => {
-                let (window_id, window) = window::open(window::Settings {
-                    size: window::default_size(),
-                    position: window::Position::Default,
-                    min_size: Some(window::MIN_SIZE),
-                    exit_on_close_request: false,
-                    ..window::settings()
-                });
-
-                let new_window = Window::new(window_id.clone(), window_title);
-
-                state.windows.insert(window_id, new_window);
-                Task::none()
-            }
-            Message::OpenWindow => {
+            Message::OpenWindow(window_type, title) => {
                 let Some(last_window) = state.windows.keys().last() else {
                     return Task::none();
                 };
 
+                let title_clone = title.clone(); // Clone here for the outer closure
+
                 iced::window::get_position(*last_window)
-                    .then(|last_position| {
+                    .then(move |last_position| {
                         let position = last_position.map_or(
                             window::Position::Default,
                             |last_position| {
@@ -419,17 +408,45 @@ impl RC {
                             },
                         );
 
-                        let (_id, open) = window::open(window::Settings {
+                        let (id, open) = window::open(window::Settings {
+                            size: window::default_size(),
                             position,
-                            ..window::Settings::default()
+                            min_size: Some(window::MIN_SIZE),
+                            exit_on_close_request: true,
+                            ..window::settings()
                         });
 
-                        open
+                        let title_clone = title_clone.clone(); // Clone here for the outer closure
+
+                        let new_window = WindowState {
+                            id: id,
+                            title: title_clone.to_owned(),
+                            window_type: window_type
+                        };
+
+                        open.map(move |_| Message::WindowOpened(new_window.to_owned()))
                     })
-                    .map(Message::WindowOpened)
             }
-            Message::WindowOpened(id) => {
-                let window = Window::new(id, "It's a new window!".to_string());
+            Message::WindowOpened(new_window) => {
+                let new_window = WindowState {
+                    id: new_window.id,
+                    title: new_window.title,
+                    window_type: new_window.window_type,
+                };
+
+                let id_clone = new_window.id.clone();
+
+                state.windows.insert(new_window.id, new_window);
+                text_input::focus(format!("input-{}", id_clone))
+            }
+            Message::MainWindowOpened(id) => {
+
+                let window = WindowState {
+                    id: id,
+                    title: "Receipt Calculator".to_string(),
+                    window_type: WindowType::Main,
+                };
+
                 let focus_input = text_input::focus(format!("input-{id}"));
 
                 state.windows.insert(id, window);
@@ -437,6 +454,7 @@ impl RC {
                 focus_input
             }
             Message::WindowClosed(id) => {
+                println!("Window Closed Event Requested");
                 state.windows.remove(&id);
 
                 if state.windows.is_empty() {
@@ -458,38 +476,40 @@ impl RC {
 
     fn view(state: &Self, window_id: window::Id) -> Element<Message> {
 
-        let item_view_state = ItemView::new();
-
         if let Some(window) = state.windows.get(&window_id) {
 
-            if window.id == state.main_window.id {
-                column![
-                    ItemView::view(&item_view_state).map(Message::UI),
-                    button(text("New Window")).on_press(Message::OpenWindow),
-                ].into()
-            } else {
-                column![
-                    text!("Do it again, but better"),
-                    button(text("New Window")).on_press(Message::OpenWindow),
-                ].into()
-            }
-/*             match &state.current_view {
-                Page::Home(item_view_state) => {
-                    column![
-                        ItemView::view(&item_view_state).map(Message::UI),
-                        button(text("New Window")).on_press(Message::OpenWindow),
-                    ].into()
-                }
-                Page::CreateItem => {
-                    column![
-                        text!("Do it again, but better"),
-                        button(text("New Window")).on_press(Message::OpenWindow),
-                    ].into()
-                }
-            } */
-                
-            
+            match window.window_type {
+                WindowType::Main => {
+                    let item_view = if let Ok(app_state) = state.shared_state.try_borrow() {
+                        app_state.item_view.clone()
+                    } else {
+                        ItemView::new()
+                    };
 
+                    column![
+                        ItemView::view(&item_view).map(Message::UI),
+                        button(text("Create Items")).on_press(Message::OpenWindow(WindowType::CreateItem, "Create New Item".to_string())),
+                    ].into()
+                }
+                WindowType::CreateItem => {
+                    let add_item_view = if let Ok(app_state) = state.shared_state.try_borrow() {
+                        app_state.add_item_view.clone()
+                    } else {
+                        ItemView::new()
+                    };
+
+                    column![
+                        ItemView::add_item_window(&add_item_view).map(Message::UI),
+                        button(text("New Window")).on_press(Message::OpenWindow(WindowType::ItemList, "Item List".to_string())),
+                    ].into()
+                }
+                WindowType::ItemList => {
+                    column![
+                        text!("Item List"),
+                        button(text("New Window")).on_press(Message::OpenWindow(WindowType::ItemList, "Another Window".to_string())),
+                    ].into()
+                }
+            }
         }    
         else {
             horizontal_space().into()
@@ -500,11 +520,19 @@ impl RC {
         Theme::Dracula
     }
 
+    fn subscription(state: &Self) -> Subscription<Message> {
+        iced::window::close_events().map(Message::WindowClosed)
+    }
+
+
 }
+
+
 
 fn main() -> iced::Result {
     
     iced::daemon("Receipt Calculator", RC::update, RC::view)
+        .subscription(RC::subscription)
         .theme(RC::theme)
         .run_with(RC::new)
 }

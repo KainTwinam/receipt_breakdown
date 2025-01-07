@@ -2,10 +2,9 @@ use iced::widget::{column, row, text, button, Container};
 use iced::{Color, Element, Length};
 use std::hash::{Hash, Hasher};
 
-use crate::TaxGroup;
+use crate::core::tax_group::TaxGroup;
 use crate::ui::custom_appearances::{pos_table_header, pos_table_row};
-use crate::ui;
-use crate::ui::Message;
+use crate::ui::item_list_view::Message;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Item {
@@ -19,14 +18,6 @@ pub struct Item {
 
 impl Item {
     pub fn new(id: i64, name: String, category: String, price: f64, tax_group: TaxGroup, tax_overide: bool) -> Self {
-//        println!("==Creating new Item==");
-//        println!("id: {}", id);
-//        println!("name: {}", name);
-//        println!("percent: ${}", price);
-//        println!("tax group: {}", tax_group.name);
-//        println!("tax_overide: {}", tax_overide);
-//        println!("=========================");
-//        println!("");
         
         Item {
             id: id,
@@ -52,31 +43,6 @@ impl Hash for Item {
         let price_bits = self.price.to_bits();
         price_bits.hash(state);
     }
-}
-
-pub fn items_view<'a>(item_vec: Result<Vec<Item>, String>, mut edit_state: std::collections::HashMap<i64, bool>) -> Element<'a, Message> {
-
-    column![
-        match item_vec {
-            Ok(items) => {
-                let item_table: Element<'a, Message> = column![
-                    row![
-                        text("Items").size(20),
-                        button("Add Item").on_press(Message::NewItem)
-                            .width(Length::Fill)
-                            .padding(2),
-                    ],
-                    create_items_table(items, &mut edit_state)
-                ].into();
-    
-                item_table
-            },
-            Err(e)=> {
-                text(format!("Error loading Items: {}", e)).into()
-            }
-        }
-    ].spacing(2).into()
-    
 }
 
 pub fn create_items_table(items: Vec<Item>, edit_states: &mut std::collections::HashMap<i64, bool>) -> Element<'static, Message> {

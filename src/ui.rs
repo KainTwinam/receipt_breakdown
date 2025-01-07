@@ -1,3 +1,12 @@
+//appearances
+pub mod custom_appearances;
+pub use custom_appearances::validator;
+
+//views
+pub mod item_list_view;
+pub mod add_item_view;
+
+/* 
 use iced::widget::{button, column, container, row, text, text_input, checkbox};
 use iced::{Element, Length, Settings, Subscription, Theme, Task};
 use crate::Receipt;
@@ -7,13 +16,14 @@ use crate::window::{Window, settings};
 use iced::window;
 use iced_core;
 use std::collections::HashMap;
+ */
 
-pub mod custom_appearances;
-use custom_appearances::validator;
 
+
+/* 
 #[derive(Debug, Clone)]
 
-pub struct ItemView {
+ pub struct ItemView {
     //windows: HashMap<window::Id, Window>,
     items: Vec<Item>,
     edit_states: std::collections::HashMap<i64, bool>,
@@ -343,7 +353,7 @@ fn convert_to_f64(input: &str) -> f64 {
     input.parse::<f64>().unwrap_or(0.0)
 }
 
-
+ */
 
 
 /* #[derive(Default, Clone)]

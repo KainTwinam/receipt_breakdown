@@ -36,7 +36,7 @@ impl ItemView {
             }
             Message::SaveItem(item_id) => {
                 println!("Saving Item!");
-                for item in items.iter_mut(){
+                for item in state.items.iter_mut(){
                     if item.id == item_id {
 
                     }

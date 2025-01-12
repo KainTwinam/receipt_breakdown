@@ -1,4 +1,5 @@
 use iced::alignment::Horizontal;
+use iced::Alignment::Center;
 use iced::{Alignment, Element, Length};
 use iced::widget::{button, checkbox, column, container, row, text, text_input, Container};
 
@@ -164,39 +165,40 @@ impl AddItemForm {
         Container::new(
             column![
                 row![
-                    text("Add Items").size(25),
-                ],
+                    text("Add Items").size(16),
+                ].padding(8),
+                iced::widget::horizontal_rule(1),
                 column![
-                    text("Item ID").size(18),
+                    text("ID").size(18),
                     validator::view(&state.item_id.value.clone(), &state.item_id.placeholder, state.item_id.is_valid).map(Message::ItemIdChanged),
-                ],
+                ].padding(8),
                 column![
-                    text("Item Name").size(18),
+                    text("Name").size(18),
                     text_input("", &state.item_name).on_input(Message::ItemNameChanged).id(format!("1")).width(120)
-                    ],
+                    ].padding(8),
                 column![
-                    text("Item Category").size(18),
+                    text("Category").size(18),
                     text_input("", &state.category).on_input(Message::CategoryChanged).width(120)
-                    ],
+                    ].padding(8),
                 column![
-                    text("Item Price").size(18),
+                    text("Price").size(18),
                     validator::view(&state.price.value, &state.price.placeholder, state.price.is_valid).map(Message::PriceChanged),
-                ],
+                ].padding(8),
                 column![
                     text("Tax Group").size(18),
                     text_input("", &state.tax_group).on_input(Message::TaxGroupChanged).width(120)
-                    ],
+                    ].padding(8),
                 column![
-                    checkbox("Overide Tax", state.tax_overide).on_toggle(Message::TaxOverideChanged).spacing(4)
+                    checkbox("Tax Overide", state.tax_overide).on_toggle(Message::TaxOverideChanged).spacing(4)
                     ].spacing(8).padding(8),
                 row![
                     iced::widget::horizontal_space().width(Length::Fill),
-                    button("Submit").on_press(Message::Submit).width(Length::Shrink),
+                    button("Add Item").on_press(Message::Submit).width(Length::Shrink),
                     iced::widget::horizontal_space().width(Length::Fill),
-                ].width(130),
+                ].padding(8).width(130),
             ]
         )
-        .padding(8)
+        .width(130)
         .into()
     }
 }

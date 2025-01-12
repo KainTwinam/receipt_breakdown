@@ -1,5 +1,5 @@
 use iced::{Element, Length};
-use iced::widget::{button, column, row, text, text_input};
+use iced::widget::{button, column, row, text, text_input, Container};
 
 use crate::core::{
     tax::Tax,
@@ -69,17 +69,19 @@ impl AddTaxGroupForm {
                     Some(Action::AddNewTaxGroup(new_tax_group))
                 }
 
-                //let new_tax_group = TaxGroup::new(tax_group_id, tax_group_name, taxes);
-
-                //Some(Action::AddNewTaxGroup(new_tax_group))
             }
             Message::TaxGroupIdChanged(id) => {
-                println!("ID Changed");
                 match id {
                     validator::Message::RawInput(input) => {
                         state.tax_group_id.value = input;
                         state.tax_group_id.is_valid =
                             validator::validate(&state.tax_group_id.value, validate_i64);
+
+                        if !state.tax_group_id.is_valid { 
+                            state.tax_group_id.value = String::new();
+                            state.tax_group_id.is_valid = true;
+                            state.tax_group_id.placeholder = "Numbers Only".to_string();
+                        } else { state.tax_group_id.placeholder = "".to_string() }
                     }
                     validator::Message::RawSubmit(input) => {
                         state.tax_group_id.value = input;
@@ -92,14 +94,11 @@ impl AddTaxGroupForm {
                 None
             }
             Message::TaxGroupNameChanged(name) => {
-                println!("Tax Group Name field Changed");
                 state.tax_group_name = name;
 
                 None
             }
             Message::TaxGroupTaxesChanged(taxes) => {
-                println!("Tax Group Taxes field Changed");
-
                 let cloned_taxes = taxes.clone();
 
                 match parse_taxes(cloned_taxes) {
@@ -117,12 +116,7 @@ impl AddTaxGroupForm {
 
 
     pub fn view<'a>(state: &Self) -> Element<'static, Message>{
-        let validator::Input {
-            value,
-            is_valid,
-            placeholder,
-        } = &state.tax_group_id;
-    
+
         //create sales tax to add to tax group
         let sales_tax = Tax::default();
     
@@ -130,35 +124,37 @@ impl AddTaxGroupForm {
         let mut taxes = Vec::new();
         &taxes.push(sales_tax);
     
+
+        Container::new(
         column![
             column![
                 row![
-                    text("Add Tax Group").size(25),
-                ],
+                    text("Add Tax Group").size(16),
+                ].padding(8),
+                iced::widget::horizontal_rule(1),
+                column![
+                    text("ID").size(18),
+                    validator::view(&state.tax_group_id.value.clone(), &state.tax_group_id.placeholder.clone(), true).map(Message::TaxGroupIdChanged),
+                ].padding(8),
+
+                column![
+                    text("Name").size(18),
+                    text_input("", &state.tax_group_name).on_input(Message::TaxGroupNameChanged).width(120),
+                ].padding(8),
+                column![
+                    text("Taxes").size(18),
+                    text_input("", &state.tax_group_taxes).on_input(Message::TaxGroupTaxesChanged).width(120),
+                ].padding(8),
                 row![
-                    column![
-                        validator::view(&state.tax_group_id.value.clone(), &"Item ID", true).map(Message::TaxGroupIdChanged),
-                        if state.tax_group_id.value.is_empty(){
-                            "".into()
-                        } else if state.tax_group_id.is_valid {
-                            text("Perfect").style(text::primary)
-                        } else {
-                            text("Numbers Only").style(text::danger)
-                        },
-                    ],
-                ],
-                row![
-                    text_input("Tax Group Name", &state.tax_group_name).on_input(Message::TaxGroupNameChanged),
-                ],
-                row![
-                    text_input("Taxes", &state.tax_group_taxes).on_input(Message::TaxGroupTaxesChanged),
-                ],
-                row![
-                    button("Submit").on_press(Message::Submit)
-                    .width(Length::Shrink),
-                ],
+                    iced::widget::horizontal_space().width(Length::Fill),
+                    button("Submit").on_press(Message::Submit).width(Length::Shrink),
+                    iced::widget::horizontal_space().width(Length::Fill),
+                ].padding(8).width(130),
             ]
-        ].into()
+        ]
+        )
+        .width(130)
+        .into()
     }
 }
 

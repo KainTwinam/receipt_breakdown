@@ -72,7 +72,7 @@ pub fn create_taxes_table(taxes: Vec<Tax>, edit_states: &mut std::collections::H
                     row![
                     table_cell(tax.id.to_string(), false, 100_f32, tax.id, false, "id".to_string(), edit_states),
                     table_cell(tax.name.clone(), false, 200_f32, tax.id, is_editing, "name".to_string(), edit_states),
-                    table_cell(format!("%{:.2}", tax.percent), false, 100_f32, tax.id, is_editing, "percent".to_string(), edit_states),
+                    table_cell(format!("{:.2}%", tax.percent), false, 100_f32, tax.id, is_editing, "percent".to_string(), edit_states),
                     table_cell_with_action(
                         tax.id, 
                         210_f32,

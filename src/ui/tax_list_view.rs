@@ -21,8 +21,12 @@ pub enum Message {
 
 impl TaxView {
     pub fn new() -> Self {
+        let mut tax_vec = Vec::new();
+        let tax = Tax::default();
+        tax_vec.push(tax);
+
         TaxView {
-            taxes: Vec::new(),
+            taxes: tax_vec,
             edit_states: std::collections::HashMap::new(),
         }
     }

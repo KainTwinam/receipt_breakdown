@@ -5,7 +5,7 @@ use iced_core::{Point, Size};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
-pub const MIN_SIZE: Size = Size::new(426.0, 240.0);
+pub const MIN_SIZE: Size = Size::new(1150.0, 750.0);
 
 pub mod position;
 pub mod size;
@@ -29,8 +29,8 @@ impl Default for Window {
 
 pub fn default_size() -> Size {
     Size {
-        width: 1024.0,
-        height: 768.0,
+        width: 1150.0,
+        height: 750.0,
     }
 }
 

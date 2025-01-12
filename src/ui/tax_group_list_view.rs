@@ -23,8 +23,13 @@ pub enum Message {
 
 impl TaxGroupView {
     pub fn new() -> Self {
+        
+        let mut tax_group_vec = Vec::new();
+        let tax_group = TaxGroup::default();
+        tax_group_vec.push(tax_group);
+
         TaxGroupView{
-            tax_groups: Vec::new(),
+            tax_groups: tax_group_vec,
             edit_states: std::collections::HashMap::new(),
         }
     }

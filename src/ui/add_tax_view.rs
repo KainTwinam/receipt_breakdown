@@ -1,5 +1,5 @@
 use iced::{Element, Length, Task};
-use iced::widget::{button, checkbox, column, row, text, text_input};
+use iced::widget::{button, checkbox, column, row, text, text_input, Container};
 
 use crate::core::{
     tax::Tax,
@@ -59,7 +59,7 @@ impl AddTaxForm {
 
                 let tax_name = &state.tax_name;
 
-                let new_tax = Tax::default();
+                let new_tax = Tax::new(tax_id, state.tax_name.to_string(), tax_percent);
 
                 Some(Action::AddNewTax(new_tax))
             }
@@ -70,6 +70,12 @@ impl AddTaxForm {
                         state.tax_id.value = input;
                         state.tax_id.is_valid =
                             validator::validate(&state.tax_id.value, validate_i64);
+
+                        if !state.tax_id.is_valid { 
+                            state.tax_id.value = String::new();
+                            state.tax_id.is_valid = true;
+                            state.tax_id.placeholder = "Numbers Only".to_string();
+                        } else { state.tax_id.placeholder = "".to_string() }
                     }
                     validator::Message::RawSubmit(input) => {
                         state.tax_id.value = input;
@@ -94,6 +100,12 @@ impl AddTaxForm {
                         state.percent.value = input;
                         state.percent.is_valid =
                             validator::validate(&state.percent.value, validate_f64);
+
+                        if !state.percent.is_valid { 
+                            state.percent.value = String::new();
+                            state.percent.is_valid = true;
+                            state.percent.placeholder = "Numbers Only".to_string();
+                        } else { state.percent.placeholder = "".to_string() }
                     }
                     validator::Message::RawSubmit(input) => {
                         state.percent.value = input;
@@ -110,51 +122,33 @@ impl AddTaxForm {
 
 
     pub fn view<'a>(state: &Self) -> Element<'static, Message>{
-        let validator::Input {
-            value,
-            is_valid,
-            placeholder,
-        } = &state.tax_id;
-    
-        let validator::Input {
-            value,
-            is_valid,
-            placeholder,
-        } = &state.percent;
-    
-        column![
+        Container::new(
             column![
                 row![
-                    text("Add Tax").size(25),
-                ],
-                
+                    text("Add Tax").size(16),
+                ].padding(8),
+                iced::widget::horizontal_rule(1),
+                column![
+                    text("ID").size(18),
+                    validator::view(&state.tax_id.value.clone(), &state.tax_id.placeholder, true).map(Message::TaxIdChanged),
+                ].padding(8),
+                column![
+                    text("Name").size(18),
+                    text_input("", &state.tax_name).on_input(Message::TaxNameChanged).id(format!("tax-1")),
+                ].padding(8),
+                column![
+                    text("Tax %").size(18),
+                    validator::view(&state.percent.value.clone(), &state.percent.placeholder, true).map(Message::PercentChanged),
+                ].padding(8),
                 row![
-                    column![
-                        validator::view(&state.tax_id.value.clone(), &"Tax ID", true).map(Message::TaxIdChanged),
-                        if state.tax_id.value.is_empty(){
-                            "".into()
-                        } else if state.tax_id.is_valid {
-                            text("Perfect").style(text::primary)
-                        } else {
-                            text("Numbers Only").style(text::danger)
-                        },
-                    ],
-                    text_input("Tax Name", &state.tax_name).on_input(Message::TaxNameChanged).id(format!("1")),
-                    column![
-                        validator::view(&state.percent.value, &"Tax percent", true).map(Message::PercentChanged),
-                        if state.percent.value.is_empty(){
-                            "".into()
-                        } else if state.percent.is_valid {
-                            text("Perfect").style(text::primary)
-                        } else {
-                            text("Numbers Only").style(text::danger)
-                        },
-                    ],
-                row![
-                    button("Submit").on_press(Message::Submit)
-                    .width(Length::Shrink),
-                ],
-            ]]
-        ].into()
+                    iced::widget::horizontal_space().width(Length::Fill),
+                    button("Submit").on_press(Message::Submit).width(Length::Shrink),
+                    iced::widget::horizontal_space().width(Length::Fill),
+                ].padding(8).width(130),
+            ]
+        )
+        .width(130)
+        .into()
+
     }
 }

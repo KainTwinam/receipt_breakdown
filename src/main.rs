@@ -1,5 +1,5 @@
 use iced::widget::{button, column, horizontal_rule, horizontal_space, row, text, text_input, vertical_rule, Container};
-use iced::{Element, Subscription, Theme, Task, Vector};
+use iced::{Alignment, Element, Subscription, Task, Theme, Vector};
 use iced_core::alignment::Vertical;
 mod core;
 mod ui;
@@ -13,6 +13,12 @@ use ui::{
     //taxes
     tax_list_view,
     add_tax_view,
+    //gratuities
+    gratuity_list_view,
+    add_gratuity_view,
+    //service charges
+    service_charge_list_view,
+    add_service_charge_view,
 };
 use ui::{
     //items
@@ -24,6 +30,12 @@ use ui::{
     //taxes
     tax_list_view::TaxView,
     add_tax_view::AddTaxForm,
+    //gratuities
+    gratuity_list_view::GratuityView,
+    add_gratuity_view::AddGratuityForm,
+    //service charges
+    service_charge_list_view::ServiceChargeView,
+    add_service_charge_view::AddServiceChargeForm,
 };
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -44,6 +56,13 @@ pub struct AppState {
     //taxes
     tax_view: TaxView,
     add_tax_view: AddTaxForm,
+
+    //gratuities
+    gratuity_view: GratuityView,
+    add_gratuity_view: AddGratuityForm,
+    //service charges
+    service_charge_view: ServiceChargeView,
+    add_service_charge_view: AddServiceChargeForm,
 
     //test ui
     test_ui: core::testing_ui_stuff::TestView,
@@ -74,10 +93,22 @@ pub struct WindowState {
     window_type: WindowType,
 }
 
+#[derive(Default, Debug, Clone, Copy)]
+pub enum View {
+    #[default] Main,
+    Items,
+    TaxGroups,
+    Taxes,
+    Gratuities,
+    ServiceCharges,
+}
+
 struct RC {
     main_window_id: window::Id,
     windows: BTreeMap<window::Id, WindowState>,
     shared_state: Rc<RefCell<AppState>>,
+    view: View,
+    window_size: (f32, f32),
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +125,14 @@ enum Message {
     TaxList(tax_list_view::Message),
     AddTax(add_tax_view::Message),
 
+    //gratuities
+    GratuityList(gratuity_list_view::Message),
+    AddGratuity(add_gratuity_view::Message),
+
+    //service charges
+    ServiceChargeList(service_charge_list_view::Message),
+    AddServiceCharge(add_service_charge_view::Message),
+
     //testing multi Window application
     MainWindowOpened(window::Id),
     OpenWindow(WindowType, String),
@@ -103,6 +142,12 @@ enum Message {
 
     //ui test
     TestingUIStuff(core::testing_ui_stuff::Message),
+
+    //moving back to views inside the main window
+    SetView(View),
+    WindowResized((window::Id, iced::Size)),
+    //KeyboardEvent((iced::keyboard::Key, iced::keyboard::Modifiers)),
+    KeyboardEvent(iced::keyboard::Key),
 }
 
 impl RC {
@@ -132,6 +177,13 @@ impl RC {
             tax_view: TaxView::new(),
             add_tax_view: AddTaxForm::new(),
 
+            //gratuities
+            gratuity_view: GratuityView::new(),
+            add_gratuity_view: AddGratuityForm::new(),
+            //service charges
+            service_charge_view: ServiceChargeView::new(),
+            add_service_charge_view: AddServiceChargeForm::new(),
+
             //test ui
             test_ui: core::testing_ui_stuff::TestView::new(),
 
@@ -145,6 +197,8 @@ impl RC {
                 windows,
                 main_window_id,
                 shared_state,
+                view: View::default(),
+                window_size: (0_f32, 0_f32),
             },
             open_main_window.map(Message::MainWindowOpened),
         )
@@ -204,6 +258,44 @@ impl RC {
                             Task::perform(async move {
                                 tax_list_view::Message::NewTax(tax)
                             }, Message::TaxList)
+                        }
+                    }
+                } else {
+                    Task::none()
+                }
+            }
+            Message::GratuityList(ui_message) => {
+                let mut app_state = state.shared_state.borrow_mut();
+                GratuityView::update(&mut app_state.gratuity_view, ui_message).map(Message::GratuityList)
+            }
+            Message::AddGratuity(msg) => {
+                let mut app_state = state.shared_state.borrow_mut();
+
+                if let Some(action) = add_gratuity_view::AddGratuityForm::update( &mut app_state.add_gratuity_view, msg ) {
+                    match action {
+                        add_gratuity_view::Action::AddNewGratuity(gratuity) => {
+                            Task::perform(async move {
+                                gratuity_list_view::Message::NewGratuity(gratuity)
+                            }, Message::GratuityList)
+                        }
+                    }
+                } else {
+                    Task::none()
+                }
+            }
+            Message::ServiceChargeList(ui_message) => {
+                let mut app_state = state.shared_state.borrow_mut();
+                ServiceChargeView::update(&mut app_state.service_charge_view, ui_message).map(Message::ServiceChargeList)
+            }
+            Message::AddServiceCharge(msg) => {
+                let mut app_state = state.shared_state.borrow_mut();
+
+                if let Some(action) = add_service_charge_view::AddServiceChargeForm::update( &mut app_state.add_service_charge_view, msg ) {
+                    match action {
+                        add_service_charge_view::Action::AddNewServiceCharge(service_charge) => {
+                            Task::perform(async move {
+                                service_charge_list_view::Message::NewServiceCharge(service_charge)
+                            }, Message::ServiceChargeList)
                         }
                     }
                 } else {
@@ -272,11 +364,12 @@ impl RC {
                     window_type: WindowType::Main,
                 };
 
-                let focus_input = text_input::focus(format!("input-{id}"));
+                //let focus_input = text_input::focus(format!("input-{id}"));
 
                 state.windows.insert(id, window);
 
-                focus_input
+                //focus_input
+                Task::none()
             }
             Message::WindowClosed(id) => {
                 println!("Window Closed Event Requested");
@@ -295,6 +388,19 @@ impl RC {
 
                 Task::none()
             }
+            Message::SetView(view) => {
+                state.view = view;
+                Task::none()
+            }
+            Message::WindowResized((_id, size)) => {
+                state.window_size = (size.width, size.height);
+
+                Task::none()
+            }
+            Message::KeyboardEvent(key) => {
+                
+                Task::none()
+            }
         }
     }
 
@@ -305,63 +411,143 @@ impl RC {
 
             match window.window_type {
                 WindowType::Main => {
-                    row![
+
+                    let view: Element<'_, Message> = match state.view {
+                        View::Main => {
+                            column![
+                                text("Message of the day:").size(25),
+                                text("I have a message of the day, and it's placed here, on the main menu where it belongs."),
+                            ].into()
+                        }
+                        View::Items => {
+                            let item_view = if let Ok(app_state) = state.shared_state.try_borrow() {
+                                app_state.item_view.clone()
+                            } else {
+                                ItemView::new()
+                            };
+        
+                            let add_item_view = if let Ok(app_state) = state.shared_state.try_borrow() {
+                                app_state.add_item_view.clone()
+                            } else {
+                                AddItemForm::new()
+                            };
+        
+                            Container::new(
+                                row![
+                                    AddItemForm::view(&add_item_view).map(Message::AddItem),
+                                    iced::widget::vertical_rule(1),        
+                                    ItemView::view(&item_view).map(Message::ItemList),
+                                ]
+                            ).into()
+                        }
+                        View::TaxGroups => {
+                            let tax_group_view = if let Ok(app_state) = state.shared_state.try_borrow() {
+                                app_state.tax_group_view.clone()
+                            } else {
+                                TaxGroupView::new()
+                            };
+
+                            let add_tax_group = if let Ok(app_state) = state.shared_state.try_borrow() {
+                                app_state.add_tax_group_view.clone()
+                            } else {
+                                AddTaxGroupForm::new()
+                            };
+        
+                            Container::new(
+                                row![
+                                    AddTaxGroupForm::view(&add_tax_group).map(Message::AddTaxGroup),
+                                    iced::widget::vertical_rule(1), 
+                                    TaxGroupView::view(&tax_group_view).map(Message::TaxGroupList),
+                                ]
+                            ).into()
+                        }
+                        View::Taxes => {
+                            let tax_view = if let Ok(app_state) = state.shared_state.try_borrow() {
+                                app_state.tax_view.clone()
+                            } else {
+                                TaxView::new()
+                            };
+
+                            let add_tax = if let Ok(app_state) = state.shared_state.try_borrow() {
+                                app_state.add_tax_view.clone()
+                            } else {
+                                AddTaxForm::new()
+                            };
+        
+                            Container::new(
+                                row![
+                                    AddTaxForm::view(&add_tax).map(Message::AddTax),
+                                    iced::widget::vertical_rule(1), 
+                                    TaxView::view(&tax_view).map(Message::TaxList),
+                                ]
+                            ).into()
+                        }
+                        View::Gratuities => {
+                            let gratuity_view = if let Ok(app_state) = state.shared_state.try_borrow() {
+                                app_state.gratuity_view.clone()
+                            } else {
+                                GratuityView::new()
+                            };
+
+                            let add_gratuity = if let Ok(app_state) = state.shared_state.try_borrow() {
+                                app_state.add_gratuity_view.clone()
+                            } else {
+                                AddGratuityForm::new()
+                            };
+        
+                            Container::new(
+                                row![
+                                    AddGratuityForm::view(&add_gratuity).map(Message::AddGratuity),
+                                    iced::widget::vertical_rule(1), 
+                                    GratuityView::view(&gratuity_view).map(Message::GratuityList),
+                                ]
+                            ).into()
+                        }
+                        View::ServiceCharges => {
+                            let service_charge_view = if let Ok(app_state) = state.shared_state.try_borrow() {
+                                app_state.service_charge_view.clone()
+                            } else {
+                                ServiceChargeView::new()
+                            };
+
+                            let add_service_charge = if let Ok(app_state) = state.shared_state.try_borrow() {
+                                app_state.add_service_charge_view.clone()
+                            } else {
+                                AddServiceChargeForm::new()
+                            };
+        
+                            Container::new(
+                                row![
+                                    AddServiceChargeForm::view(&add_service_charge).map(Message::AddServiceCharge),
+                                    iced::widget::vertical_rule(1), 
+                                    ServiceChargeView::view(&service_charge_view).map(Message::ServiceChargeList),
+                                ]
+                            ).into()
+                        }
+                    };
+
+
+                    let left_menu: Element<'_, Message> = row![
                         column![
-                            button(text("Items")).on_press(Message::OpenWindow(WindowType::ItemList, "Item List".to_string())).width(iced::Length::Fill).style(button::primary), 
-                            button(text("Tax Groups")).on_press(Message::OpenWindow(WindowType::TaxGroupList, "Tax Group List".to_string())).width(iced::Length::Fill).style(button::primary), 
-                            button(text("Taxes")).on_press(Message::OpenWindow(WindowType::TaxList, "Tax List".to_string())).width(iced::Length::Fill).style(button::primary), 
-                        ].width(100),
+                            text("Config").size(20),
+                            button(text("Items")).on_press(Message::SetView(View::Items)).width(iced::Length::Fill).style(button::primary),
+                            button(text("Tax Groups")).on_press(Message::SetView(View::TaxGroups)).width(iced::Length::Fill).style(button::primary),  
+                            button(text("Taxes")).on_press(Message::SetView(View::Taxes)).width(iced::Length::Fill).style(button::primary),
+                            button(text("Gratuities")).on_press(Message::SetView(View::Gratuities)).width(iced::Length::Fill).style(button::primary), 
+                            button(text("Service Charges")).on_press(Message::SetView(View::ServiceCharges)).width(iced::Length::Fill).style(button::primary),  
+
+                            text(format!("X: {}", state.window_size.0)),
+                            text(format!("Y: {}", state.window_size.1)),
+
+                        ].align_x(Alignment::Center).width(100),
                         vertical_rule(2)
+                    ].into();
+
+                    row![
+                        left_menu,
+                        Container::new(view),
                     ].into()
 
-/*                     let test_view = if let Ok(app_state) = state.shared_state.try_borrow() {
-                            app_state.test_ui.clone()
-                    } else {
-                            core::testing_ui_stuff::TestView::new()
-                    }; */
-
-//old main view:
-/* 
-                    column![
-//                         column![
-//                            core::testing_ui_stuff::TestView::view(&test_view).map(Message::TestingUIStuff),
-
-
-                        column![
-                            row![
-                                text("Items").size(25),
-                            ],
-                            row![
-                                button(text("Item List")).on_press(Message::OpenWindow(WindowType::ItemList, "Item List".to_string())),
-                                button(text("Create Items")).on_press(Message::OpenWindow(WindowType::CreateItem, "Add Items".to_string())),
-                            ].spacing(5),
-                        ].spacing(5),
-
-                        iced::widget::Space::with_height(10),
-
-                        column![
-                            row![
-                                text("Tax Groups").size(25),
-                            ],
-                            row![
-                                button(text("Tax Group List")).on_press(Message::OpenWindow(WindowType::TaxGroupList, "Tax Group List".to_string())),
-                                button(text("Create Tax Groups")).on_press(Message::OpenWindow(WindowType::CreateTaxGroup, "Create A Tax Group".to_string())),
-                            ].spacing(5),
-                        ].spacing(5),
-
-                        iced::widget::Space::with_height(10),
-
-                        column![
-                            row![
-                                text("Taxes").size(25),
-                            ],
-                            row![
-                                button(text("Tax List")).on_press(Message::OpenWindow(WindowType::TaxList, "Tax List".to_string())),
-                                button(text("Create Tax")).on_press(Message::OpenWindow(WindowType::CreateTax, "Create Tax".to_string())),
-                            ].spacing(5),
-                        ].spacing(5),
-
-                    ].into() */
                 }
                 WindowType::CreateItem => {
                     let add_item_view = if let Ok(app_state) = state.shared_state.try_borrow() {
@@ -454,12 +640,17 @@ impl RC {
         }
     }
 
-    fn theme(state: &Self, window_id: window::Id) -> Theme {
+
+    fn theme(_state: &Self, _window_id: window::Id) -> Theme {
         Theme::CatppuccinFrappe
     }
 
-    fn subscription(state: &Self) -> Subscription<Message> {
-        iced::window::close_events().map(Message::WindowClosed)
+    fn subscription(_state: &Self) -> Subscription<Message> {
+        let window_closed = iced::window::close_events().map(Message::WindowClosed);
+        let window_resized = iced::window::resize_events().map(Message::WindowResized);
+        let keyboard_key_pressed = iced::keyboard::on_key_press(|key, _modifiers| Some(Message::KeyboardEvent(key)));
+
+        Subscription::batch(vec![window_resized, window_closed, keyboard_key_pressed])
     }
 
 

@@ -1,14 +1,11 @@
-use iced::{Element, Length, Task};
-use iced::widget::{button, checkbox, column, row, text, text_input};
+use iced::alignment::Horizontal;
+use iced::{Alignment, Element, Length};
+use iced::widget::{button, checkbox, column, container, row, text, text_input, Container};
 
 use crate::core::{
     items::Item,
-    quantity::Quantity,
-    service_charge::ServiceCharge,
-    gratuity::Gratuity,
     tax::Tax,
     tax_group::TaxGroup,
-    total::Total,
     calculations::{
         validate_f64,
         convert_to_f64,
@@ -77,7 +74,7 @@ impl AddItemForm {
                 let item_category = &state.category;
 
                 //create sales tax to add to tax group
-                let sales_tax = Tax::new(1, 0.085, "Sales Tax".to_string());
+                let sales_tax = Tax::default();
 
                 //add sales tax to a new Vec 'taxes'
                 let mut taxes = Vec::new();
@@ -98,6 +95,12 @@ impl AddItemForm {
                         state.item_id.value = input;
                         state.item_id.is_valid =
                             validator::validate(&state.item_id.value, validate_i64);
+                        
+                        if !state.item_id.is_valid { 
+                            state.item_id.value = String::new();
+                            state.item_id.is_valid = true;
+                            state.item_id.placeholder = "Numbers Only".to_string();
+                        } else { state.item_id.placeholder = "".to_string() }
                     }
                     validator::Message::RawSubmit(input) => {
                         state.item_id.value = input;
@@ -128,12 +131,17 @@ impl AddItemForm {
                         state.price.value = input;
                         state.price.is_valid =
                             validator::validate(&state.price.value, validate_f64);
+                        
+                        if !state.price.is_valid { 
+                            state.price.value = String::new();
+                            state.price.is_valid = true;
+                            state.price.placeholder = "Numbers Only".to_string();
+                        } else { state.price.placeholder = "".to_string() }
                     }
                     validator::Message::RawSubmit(input) => {
                         state.price.value = input;
                         state.price.is_valid =
                             validator::validate(&state.price.value, validate_f64);
-
                     }
                 }
             
@@ -152,76 +160,43 @@ impl AddItemForm {
     }
 
 
-    pub fn view<'a>(state: &Self) -> Element<'static, Message>{
-        let validator::Input {
-            value,
-            is_valid,
-            placeholder,
-        } = &state.item_id;
-    
-        let validator::Input {
-            value,
-            is_valid,
-            placeholder,
-        } = &state.price;
-    
-    
-        //create sales tax to add to tax group
-        let sales_tax = Tax::new(1, 0.085, "Sales Tax".to_string());
-    
-        //add sales tax to a new Vec 'taxes'
-        let mut taxes = Vec::new();
-        &taxes.push(sales_tax);
-    
-        //create new taxgroup with the sales tax
-        let tax_group = TaxGroup::new(1, "Default".to_string(), taxes);
-    
-        //create default gratuity
-        let gratuity = Gratuity::new(1, 0.20, "Default Gratuity".to_string(), tax_group.clone(), false);
-    
-        //create default service charge
-        let service_charge = ServiceCharge::new(1, 0.05, "Default Service Charge".to_string(), tax_group.clone(), false);
-    
-        column![
+    pub fn view<'a>(state: &Self) -> Element<'static, Message>{    
+        Container::new(
             column![
                 row![
-                    text("Items").size(25),
-    
+                    text("Add Items").size(25),
                 ],
-                
-                row![
-                    column![
-                        validator::view(&state.item_id.value.clone(), &"Item ID").map(Message::ItemIdChanged),
-                        if state.item_id.value.is_empty(){
-                            "".into()
-                        } else if state.item_id.is_valid {
-                            text("Perfect").style(text::primary)
-                        } else {
-                            text("Numbers Only").style(text::danger)
-                        },
+                column![
+                    text("Item ID").size(18),
+                    validator::view(&state.item_id.value.clone(), &state.item_id.placeholder, state.item_id.is_valid).map(Message::ItemIdChanged),
+                ],
+                column![
+                    text("Item Name").size(18),
+                    text_input("", &state.item_name).on_input(Message::ItemNameChanged).id(format!("1")).width(120)
                     ],
-                    //text_input("Item ID", &state.item_id).on_input(Message::ItemIdChanged),
-                    text_input("Item Name", &state.item_name).on_input(Message::ItemNameChanged).id(format!("ItemName")),
-                    text_input("Item Category", &state.category).on_input(Message::CategoryChanged),
-                    column![
-                        validator::view(&state.price.value, &"Item Price").map(Message::PriceChanged),
-                        if state.price.value.is_empty(){
-                            "".into()
-                        } else if state.price.is_valid {
-                            text("Perfect").style(text::primary)
-                        } else {
-                            text("Numbers Only").style(text::danger)
-                        },
+                column![
+                    text("Item Category").size(18),
+                    text_input("", &state.category).on_input(Message::CategoryChanged).width(120)
                     ],
-                    //text_input("Item Price", &state.price).on_input(Message::PriceChanged),
-                    text_input("Item Tax Group", &state.tax_group).on_input(Message::TaxGroupChanged),
-                    column![checkbox("Overide Tax", state.tax_overide).on_toggle(Message::TaxOverideChanged).spacing(2)].spacing(10).padding(10),
+                column![
+                    text("Item Price").size(18),
+                    validator::view(&state.price.value, &state.price.placeholder, state.price.is_valid).map(Message::PriceChanged),
                 ],
+                column![
+                    text("Tax Group").size(18),
+                    text_input("", &state.tax_group).on_input(Message::TaxGroupChanged).width(120)
+                    ],
+                column![
+                    checkbox("Overide Tax", state.tax_overide).on_toggle(Message::TaxOverideChanged).spacing(4)
+                    ].spacing(8).padding(8),
                 row![
-                    button("Submit").on_press(Message::Submit)
-                    .width(Length::Shrink),
-                ],
+                    iced::widget::horizontal_space().width(Length::Fill),
+                    button("Submit").on_press(Message::Submit).width(Length::Shrink),
+                    iced::widget::horizontal_space().width(Length::Fill),
+                ].width(130),
             ]
-        ].into()
+        )
+        .padding(8)
+        .into()
     }
 }

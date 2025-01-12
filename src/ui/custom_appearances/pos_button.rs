@@ -1,79 +1,146 @@
-//! Change the apperance of a button.
-use iced_core::{Background, Border, Color, Shadow, Vector};
+use iced::{
+    Theme, Color, Background,
+    border::{self, Border},
+    widget::button::{Style, Status},
+    theme::palette,
+};
 
-/// The appearance of a button.
-#[derive(Debug, Clone, Copy)]
-pub struct Appearance {
-    /// The amount of offset to apply to the shadow of the button.
-    pub shadow_offset: Vector,
-    /// The [`Background`] of the button.
-    pub background: Option<Background>,
-    /// The text [`Color`] of the button.
-    pub text_color: Color,
-    /// The [`Border`] of the buton.
-    pub border: Border,
-    /// The [`Shadow`] of the butoon.
-    pub shadow: Shadow,
-}
+/// A primary button; denoting a main action.
+pub fn multiple_items(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.primary.strong);
 
-impl std::default::Default for Appearance {
-    fn default() -> Self {
-        Self {
-            shadow_offset: Vector::default(),
-            background: None,
-            text_color: Color::BLACK,
-            border: Border::default(),
-            shadow: Shadow::default(),
-        }
+    match status {
+        Status::Active | Status::Pressed => base,
+        Status::Hovered => Style {
+            background: Some(Background::Color(palette.primary.base.color)),
+            ..base
+        },
+        Status::Disabled => disabled(palette, base),
     }
 }
 
-/// A set of rules that dictate the style of a button.
-pub trait StyleSheet {
-    /// The supported style of the [`StyleSheet`].
-    type Style: Default;
 
-    /// Produces the active [`Appearance`] of a button.
-    fn active(&self, style: &Self::Style) -> Appearance;
-
-    /// Produces the hovered [`Appearance`] of a button.
-    fn hovered(&self, style: &Self::Style) -> Appearance {
-        let active = self.active(style);
-
-        Appearance {
-            shadow_offset: active.shadow_offset + Vector::new(0.0, 1.0),
-            ..active
-        }
-    }
-
-    /// Produces the pressed [`Appearance`] of a button.
-    fn pressed(&self, style: &Self::Style) -> Appearance {
-        Appearance {
-            shadow_offset: Vector::default(),
-            ..self.active(style)
-        }
-    }
-
-    /// Produces the disabled [`Appearance`] of a button.
-    fn disabled(&self, style: &Self::Style) -> Appearance {
-        let active = self.active(style);
-
-        Appearance {
-            shadow_offset: Vector::default(),
-            background: active.background.map(|background| match background {
-                Background::Color(color) => Background::Color(Color {
-                    a: color.a * 0.5,
-                    ..color
-                }),
-                Background::Gradient(gradient) => {
-                    Background::Gradient(gradient.mul_alpha(0.5))
-                }
-            }),
-            text_color: Color {
-                a: active.text_color.a * 0.5,
-                ..active.text_color
-            },
-            ..active
-        }
+fn styled(pair: palette::Pair) -> Style {
+    Style {
+        background: Some(Background::Color(pair.color)),
+        text_color: pair.text,
+        border: border::rounded(8),
+        ..Style::default()
     }
 }
+
+fn disabled(palette: &palette::Extended, style: Style) -> Style {
+    Style {
+        background: style
+            .background
+            .map(|background| background.scale_alpha(0.5)),
+        text_color: style.text_color.scale_alpha(0.5),
+        border: border::rounded(8).color(palette.secondary.weak.color),
+        ..style
+    }
+}
+
+
+
+/* 
+
+/// A primary button; denoting a main action.
+pub fn primary(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.primary.strong);
+
+    match status {
+        Status::Active | Status::Pressed => base,
+        Status::Hovered => Style {
+            background: Some(Background::Color(palette.primary.base.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A secondary button; denoting a complementary action.
+pub fn secondary(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.secondary.base);
+
+    match status {
+        Status::Active | Status::Pressed => base,
+        Status::Hovered => Style {
+            background: Some(Background::Color(palette.secondary.strong.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A success button; denoting a good outcome.
+pub fn success(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.success.base);
+
+    match status {
+        Status::Active | Status::Pressed => base,
+        Status::Hovered => Style {
+            background: Some(Background::Color(palette.success.strong.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A danger button; denoting a destructive action.
+pub fn danger(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+    let base = styled(palette.danger.base);
+
+    match status {
+        Status::Active | Status::Pressed => base,
+        Status::Hovered => Style {
+            background: Some(Background::Color(palette.danger.strong.color)),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+/// A text button; useful for links.
+pub fn text(theme: &Theme, status: Status) -> Style {
+    let palette = theme.extended_palette();
+
+    let base = Style {
+        text_color: palette.background.base.text,
+        ..Style::default()
+    };
+
+    match status {
+        Status::Active | Status::Pressed => base,
+        Status::Hovered => Style {
+            text_color: palette.background.base.text.scale_alpha(0.8),
+            ..base
+        },
+        Status::Disabled => disabled(base),
+    }
+}
+
+fn styled(pair: palette::Pair) -> Style {
+    Style {
+        background: Some(Background::Color(pair.color)),
+        text_color: pair.text,
+        border: border::rounded(2),
+        ..Style::default()
+    }
+}
+
+fn disabled(style: Style) -> Style {
+    Style {
+        background: style
+            .background
+            .map(|background| background.scale_alpha(0.5)),
+        text_color: style.text_color.scale_alpha(0.5),
+        ..style
+    }
+}
+
+ */

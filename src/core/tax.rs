@@ -1,25 +1,36 @@
-use iced::widget::{column, row, text, button, Container};
+use iced::widget::{button,column, row, text, text_input, Container};
 use iced::{Color, Element, Length};
 use std::hash::{Hash, Hasher};
+use serde::{Deserialize, Serialize};
 
 use crate::ui::custom_appearances::{pos_table_header, pos_table_row};
-use crate::ui::item_list_view::Message;
+use crate::ui::tax_list_view::{Message, TaxEditState};
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, PartialOrd)]
 pub struct Tax {
     pub id: i64,
-    pub percent: f64,
     pub name: String,
+    pub percent: f64,
 }
 
 impl Tax {
-    pub fn new(id: i64, percent: f64, name: String) -> Self {
+    pub fn new(id: i64, name: String, percent: f64, ) -> Self {
         let tax_as_percentage = percent * 100.0;
         
         Tax {
             id: id,
+            name: name,
             percent: percent,
-            name: name
+        }
+    }
+}
+
+impl Default for Tax {
+    fn default() -> Self {
+        Self {
+            id: 1,
+            name: "default".to_string(),
+            percent: 7.75, 
         }
     }
 }
@@ -37,13 +48,13 @@ impl Hash for Tax {
 }
 
 
-pub fn create_items_table(taxes: Vec<Tax>, edit_states: &mut std::collections::HashMap<i64, bool>) -> Element<'static, Message> {
+pub fn create_taxes_table(taxes: Vec<Tax>, edit_states: &mut std::collections::HashMap<i64, TaxEditState>) -> Element<'static, Message> {
     // Table header
     let header = row![
-        table_cell("ID", true, 100_f32),
-        table_cell("Name", true, 200_f32),
-        table_cell("Price", true, 100_f32),
-        table_cell("Actions", true, 200_f32)
+        table_cell("ID".to_string(), true, 100_f32, 0, false, "".to_string(), edit_states),
+        table_cell("Name".to_string(), true, 200_f32, 0, false, "".to_string(), edit_states),
+        table_cell("Percent".to_string(), true, 100_f32, 0, false, "".to_string(), edit_states),
+        table_cell("Actions".to_string(), true, 200_f32, 0, false, "".to_string(), edit_states)
     ]
     .spacing(1)
     .padding(2)
@@ -54,17 +65,19 @@ pub fn create_items_table(taxes: Vec<Tax>, edit_states: &mut std::collections::H
         std::iter::once(header)
             .chain(
                 taxes.into_iter().map(|tax| {
+                    let is_editing = edit_states.get(&tax.id)
+                        .map( |state| state.is_editing)
+                        .unwrap_or(false);
 
-                    let id_cell = table_cell(&tax.id.to_string(), false, 100_f32);
-                    let name_cell = table_cell(&tax.name.clone(), false, 200_f32);
-                    let percent_cell = table_cell(&format!("${:.2}", tax.percent), false, 100_f32);
-                    let action_cell = table_cell_with_action(
+                    row![
+                    table_cell(tax.id.to_string(), false, 100_f32, tax.id, false, "id".to_string(), edit_states),
+                    table_cell(tax.name.clone(), false, 200_f32, tax.id, is_editing, "name".to_string(), edit_states),
+                    table_cell(format!("%{:.2}", tax.percent), false, 100_f32, tax.id, is_editing, "percent".to_string(), edit_states),
+                    table_cell_with_action(
                         tax.id, 
                         210_f32,
-                        edit_states.get(&tax.id).cloned().unwrap_or(false),);
-
-                    row![id_cell, name_cell, percent_cell, action_cell]
-                    .spacing(1)
+                        is_editing)
+                    ].spacing(1)
                     .padding(2)
                     .into()
                 })
@@ -80,32 +93,76 @@ pub fn create_items_table(taxes: Vec<Tax>, edit_states: &mut std::collections::H
 }
 
 // Helper function for standard table cells
-pub fn table_cell(content: &str, is_header: bool, width: f32) -> Element<'static, Message> {
+pub fn table_cell<'a>(
+    content: String, 
+    is_header: bool, 
+    width: f32,
+    tax_id: i64,
+    is_editing: bool,
+    field_name: String,
+    edit_states: &std::collections::HashMap<i64, TaxEditState>,
+) -> Element<'a, Message> {
     
-    let text_element = text(content.to_string())
+    if is_header{
+
+        let text_element = text(content.to_string())
         .color(Color::BLACK)
-        .size(if is_header { 14 } else { 12 })
+        .size(14)
         .width(Length::Fixed(width))
         .align_x(iced::Alignment::Center)
         .align_y(iced::Alignment::Center);
 
-    Container::new(text_element)
+        Container::new(text_element)
         .padding(5)
-        .style(
-            move |theme| if is_header { 
-                pos_table_header(theme)
-            } else { pos_table_row(theme)
-        })
+        .style(pos_table_header)
         .align_x(iced::Alignment::Center)
         .align_y(iced::Alignment::Center)
         .into()
+
+    } else {
+        let element: Element<Message> = if is_editing {
+
+            let current_value = if let Some(edit_state) = edit_states.get(&tax_id) {
+                match field_name.as_str() {
+                    "name" => edit_state.name.clone(),
+                    "percent" => edit_state.percent.clone(),
+                    _ => content.clone()
+                }
+            } else {
+                content.clone()
+            };
+
+            text_input("", &current_value)
+                .on_input(move |new_value| {
+                    Message::EditField(tax_id, field_name.to_string(), new_value)
+            }).size(12)
+            .width(Length::Fixed(width))
+            .into()
+
+        } else {
+            text(content)
+                .color(Color::BLACK)
+                .size(12)
+                .width(Length::Fixed(width))
+                .align_x(iced::Alignment::Center)
+                .align_y(iced::Alignment::Center)
+                .into()
+        };
+
+        Container::new(element)
+            .padding(5)
+            .style(pos_table_row)
+            .align_x(iced::Alignment::Center)
+            .align_y(iced::Alignment::Center)
+            .into()
+    }
 }
 
 // Helper function for cells with actions
 pub fn table_cell_with_action(tax_id: i64, width: f32, is_editing: bool) -> Element<'static, Message> {
     let edit_save_button = if is_editing {
         button("Save")
-            .on_press(Message::SaveItem(tax_id))
+            .on_press(Message::SaveTax(tax_id))
             .width(Length::Fill)
             .padding(2)
     } else {
@@ -122,7 +179,7 @@ pub fn table_cell_with_action(tax_id: i64, width: f32, is_editing: bool) -> Elem
             .padding(2)
     } else {
         button("Delete")
-            .on_press(Message::DeleteItem(tax_id))
+            .on_press(Message::DeleteTax(tax_id))
             .width(Length::Fill)
             .padding(2)
     };
